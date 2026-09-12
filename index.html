@@ -493,17 +493,16 @@
             chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 80, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
         };
 
-        // ELEMENTOS UI
-        const btnProcessMaster = document.getElementById('btn-process-master');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        const processStatus = document.getElementById('process-status');
-        const trackStatus = document.getElementById('track-status');
-        const btnPlayOrig = document.getElementById('btn-play-orig');
-        const btnPlayMast = document.getElementById('btn-play-mast');
-        const fileInput = document.getElementById('file-input');
-        const dropZone = document.getElementById('drop-zone');
-        const btnUpload = document.getElementById('btn-upload');
+        // Nuevas variables globales
+let masteredBuffer = null;
+let isProcessing = false;
+
+// Elementos UI de la barra de estado
+const btnProcessMaster = document.getElementById('btn-process-master');
+const progressContainer = document.getElementById('progress-container');
+const progressBar = document.getElementById('progress-bar');
+const processStatus = document.getElementById('process-status');
+const trackStatus = document.getElementById('track-status');
 
         // 2. INICIALIZACIÓN ESTRICTA DE AUDIO
         // Esto fuerza al navegador a despertar el motor de audio de inmediato
@@ -614,10 +613,10 @@
             fileInput.click();
         });
 
-        dropZone.addEventListener('click', () => {
-            initAudio();
-            fileInput.click();
-        });
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 
         dropZone.addEventListener('dragover', (e) => { 
             e.preventDefault(); 
