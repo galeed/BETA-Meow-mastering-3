@@ -292,7 +292,8 @@
 <body>
 
     <!-- INPUT OCULTO DENTRO DEL DOM PARA COMPATIBILIDAD NATIVA -->
-    <input type="file" id="file-input" accept="audio/*" style="display: none;">
+    <input type="file" id="file-input" accept="audio/*, .wav, .mp3, .flac, .aac, .ogg, .m4a" style="display: none;">
+
 
     <h1>MEOW MASTERING 3</h1>
 
@@ -618,30 +619,40 @@ const fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 
-        dropZone.addEventListener('dragover', (e) => { 
-            e.preventDefault(); 
-            dropZone.style.borderColor = 'var(--neon-magenta)'; 
-        });
-        
-        dropZone.addEventListener('dragleave', () => { 
-            dropZone.style.borderColor = 'var(--text-muted)'; 
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = 'var(--text-muted)';
-            if (e.dataTransfer.files.length) {
-                initAudio();
-                processFile(e.dataTransfer.files[0]);
-            }
-        });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--text-muted)'; });
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--text-muted)';
+    if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+});
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                processFile(e.target.files[0]);
-                e.target.value = ''; 
-            }
-        });
+fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+document.querySelector('.left-column .btn-action').addEventListener('click', () => fileInput.click());
+
+async function processFile(file) {
+    trackStatus.innerText = "Decodificando...";
+    trackStatus.style.color = 'var(--neon-magenta)';
+    btnProcessMaster.disabled = true;
+    
+    if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
+    originalBuffer = null;
+    masteredBuffer = null; // Reiniciar buffer masterizado
+
+    const arrayBuffer = await file.arrayBuffer();
+    audioContext.decodeAudioData(arrayBuffer, (buffer) => {
+        originalBuffer = buffer;
+        trackStatus.innerText = file.name;
+        trackStatus.style.color = 'var(--neon-cyan)';
+        btnProcessMaster.disabled = false; // Habilitar botón de procesar
+        
+        // Configurar los nodos en el contexto normal para visualización (opcional, pero buena práctica)
+        buildAudioGraph(); 
+    }, () => {
+        trackStatus.innerText = "Error al decodificar.";
+        trackStatus.style.color = 'red';
+    });
+}
 
         // Motor de lectura y decodificación universal
         function processFile(file) {
