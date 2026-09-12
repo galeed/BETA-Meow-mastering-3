@@ -390,82 +390,234 @@
 
         </div>
     </div>
+// ==========================================
+// 1. ESTADO Y GESTIÓN DE MEMORIA
+// ==========================================
+let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let originalBuffer = null;
+let sourceNode = null;
+let isPlaying = false;
+let currentMode = 'original'; // 'original' o 'mastered'
 
-    <!-- Lógica de Interactividad y Presets -->
-    <script>
-        // 1. Definimos los presets
-        const presets = {
-            transparent: { lufs: -14.0, truePeak: -1.0, trim: 0.0, warmth: 0, clarity: 10, air: 5, lowClean: 5, stereo: 100, space: 5, glue: 5, autoLevel: 0, monoBass: false },
-            warm: { lufs: -12.0, truePeak: -1.0, trim: 0.0, warmth: 24, clarity: 34, air: 14, lowClean: 20, stereo: 105, space: 12, glue: 12, autoLevel: 12, monoBass: true },
-            agressive: { lufs: -9.0, truePeak: -0.5, trim: 0.5, warmth: 45, clarity: 20, air: 25, lowClean: 40, stereo: 110, space: 15, glue: 35, autoLevel: 25, monoBass: true },
-            chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 60, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
-        };
+// Nodos de la cadena de masterización
+let nodes = {};
 
-        // 2. Función para actualizar un slider y su texto
-        function setControlValue(id, value) {
-            const slider = document.getElementById(`sl-${id}`);
-            const textDisplay = document.getElementById(`val-${id}`);
-            
-            if (slider && textDisplay) {
-                slider.value = value;
-                // Forzamos 1 decimal si es LUFS, TruePeak o Trim
-                let displayVal = value;
-                if (['lufs', 'truePeak', 'trim'].includes(id)) {
-                    displayVal = parseFloat(value).toFixed(1);
-                    // Añadimos signo '+' si es positivo en el Trim
-                    if (id === 'trim' && value > 0) displayVal = '+' + displayVal;
-                }
-                textDisplay.innerText = displayVal + slider.getAttribute('data-suffix');
-            }
+// Diccionario de Presets
+const presets = {
+    transparent: { lufs: -14.0, truePeak: -1.0, trim: 0.0, warmth: 0, clarity: 10, air: 5, lowClean: 5, stereo: 100, space: 5, glue: 5, autoLevel: 0, monoBass: false },
+    warm: { lufs: -12.0, truePeak: -1.0, trim: 0.0, warmth: 24, clarity: 34, air: 14, lowClean: 20, stereo: 105, space: 12, glue: 12, autoLevel: 12, monoBass: true },
+    agressive: { lufs: -9.0, truePeak: -0.5, trim: 0.5, warmth: 45, clarity: 20, air: 25, lowClean: 40, stereo: 110, space: 15, glue: 35, autoLevel: 25, monoBass: true },
+    chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 80, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
+};
+
+// ==========================================
+// 2. CONSTRUCCIÓN DE LA CADENA DE AUDIO
+// ==========================================
+function buildAudioGraph() {
+    // Si ya existen nodos, los desconectamos para evitar fugas de memoria
+    if (nodes.in) nodes.in.disconnect();
+
+    // Crear nodos
+    nodes.in = audioContext.createGain(); // Entrada
+    nodes.lowClean = audioContext.createBiquadFilter(); // HPF
+    nodes.warmth = audioContext.createWaveShaper(); // Saturador
+    nodes.clarity = audioContext.createBiquadFilter(); // Bell Filter
+    nodes.air = audioContext.createBiquadFilter(); // High Shelf
+    nodes.glue = audioContext.createDynamicsCompressor(); // Compresor
+    nodes.outTrim = audioContext.createGain(); // Salida final
+
+    // Configurar tipos de filtro
+    nodes.lowClean.type = 'highpass';
+    nodes.lowClean.frequency.value = 20; // Base de 20Hz
+
+    nodes.clarity.type = 'peaking';
+    nodes.clarity.frequency.value = 3500;
+    nodes.clarity.Q.value = 1.5;
+
+    nodes.air.type = 'highshelf';
+    nodes.air.frequency.value = 10000;
+
+    // Configurar Compresor
+    nodes.glue.threshold.value = -10;
+    nodes.glue.knee.value = 10;
+    nodes.glue.attack.value = 0.01;
+    nodes.glue.release.value = 0.1;
+
+    // Conectar cadena: Entrada -> LowClean -> Warmth -> Clarity -> Air -> Glue -> OutTrim -> Destino
+    nodes.in.connect(nodes.lowClean);
+    nodes.lowClean.connect(nodes.warmth);
+    nodes.warmth.connect(nodes.clarity);
+    nodes.clarity.connect(nodes.air);
+    nodes.air.connect(nodes.glue);
+    nodes.glue.connect(nodes.outTrim);
+    nodes.outTrim.connect(audioContext.destination);
+
+    updateAudioNodes(); // Aplicar valores de la UI
+}
+
+// Curva de saturación (Distorsión polinómica suave para WaveShaper)
+function makeDistortionCurve(amount) {
+    let k = typeof amount === 'number' ? amount : 50;
+    let n_samples = 44100;
+    let curve = new Float32Array(n_samples);
+    let deg = Math.PI / 180;
+    for (let i = 0; i < n_samples; ++i) {
+        let x = i * 2 / n_samples - 1;
+        curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+}
+
+// ==========================================
+// 3. ACTUALIZACIÓN EN TIEMPO REAL
+// ==========================================
+function updateAudioNodes() {
+    if (!nodes.in) return;
+
+    const val = (id) => parseFloat(document.getElementById(`sl-${id}`).value);
+
+    // Trim de salida
+    nodes.outTrim.gain.value = Math.pow(10, val('trim') / 20);
+
+    // Warmth (Saturación) - Mapeado de 0 a 100
+    const warmthVal = val('warmth');
+    nodes.warmth.curve = warmthVal > 0 ? makeDistortionCurve(warmthVal * 4) : null;
+
+    // EQ
+    nodes.air.gain.value = val('air') / 10; // Hasta +10dB en 10kHz
+    nodes.clarity.gain.value = -(val('clarity') / 15); // Cortar asperezas hasta -6.6dB en 3.5kHz
+    nodes.lowClean.frequency.value = 20 + (val('lowClean') * 1.5); // HPF sube hasta ~170Hz
+
+    // Compresión
+    const glueRatio = 1 + (val('glue') / 20); // Ratio de 1:1 a 6:1
+    nodes.glue.ratio.value = glueRatio;
+}
+
+// ==========================================
+// 4. LÓGICA DE INTERFAZ Y PRESETS
+// ==========================================
+function setControlValue(id, value) {
+    const slider = document.getElementById(`sl-${id}`);
+    const textDisplay = document.getElementById(`val-${id}`);
+    if (slider && textDisplay) {
+        slider.value = value;
+        let displayVal = value;
+        if (['lufs', 'truePeak', 'trim'].includes(id)) {
+            displayVal = parseFloat(value).toFixed(1);
+            if (id === 'trim' && value > 0) displayVal = '+' + displayVal;
         }
+        textDisplay.innerText = displayVal + slider.getAttribute('data-suffix');
+    }
+    updateAudioNodes(); // Actualizar el audio en tiempo real al mover controles
+}
 
-        // 3. Listener para el selector de presets
-        document.getElementById('preset-selector').addEventListener('change', (e) => {
-            const selectedPreset = presets[e.target.value];
-            if (!selectedPreset) return;
+document.getElementById('preset-selector').addEventListener('change', (e) => {
+    const p = presets[e.target.value];
+    if (!p) return;
+    Object.keys(p).forEach(key => {
+        if (key === 'monoBass') updateMonoBassUI(p[key]);
+        else setControlValue(key, p[key]);
+    });
+});
 
-            // Iteramos sobre las llaves del preset para actualizar la UI
-            Object.keys(selectedPreset).forEach(key => {
-                if (key === 'monoBass') {
-                    updateMonoBassUI(selectedPreset[key]);
-                } else {
-                    setControlValue(key, selectedPreset[key]);
-                }
-            });
-        });
+const allSliders = document.querySelectorAll('input[type="range"]');
+allSliders.forEach(slider => {
+    slider.addEventListener('input', (e) => setControlValue(e.target.id.replace('sl-', ''), e.target.value));
+});
 
-        // 4. Listeners para actualizar el texto en tiempo real al mover los sliders manualmente
-        const allSliders = document.querySelectorAll('input[type="range"]');
-        allSliders.forEach(slider => {
-            slider.addEventListener('input', (e) => {
-                const id = e.target.id.replace('sl-', '');
-                setControlValue(id, e.target.value);
-            });
-        });
+let isMonoBassActive = false;
+function updateMonoBassUI(isActive) {
+    isMonoBassActive = isActive;
+    const icon = document.getElementById('icon-mono-bass');
+    icon.innerText = isActive ? '[ x ]' : '[   ]';
+    icon.style.color = isActive ? 'var(--neon-cyan)' : 'var(--text-muted)';
+}
+document.getElementById('btn-mono-bass').addEventListener('click', () => updateMonoBassUI(!isMonoBassActive));
 
-        // 5. Lógica del botón Toggle "Mono Bass Anchor"
-        let isMonoBassActive = false;
-        const btnMonoBass = document.getElementById('btn-mono-bass');
-        const iconMonoBass = document.getElementById('icon-mono-bass');
+// ==========================================
+// 5. CARGA DE ARCHIVOS Y DRAG & DROP
+// ==========================================
+const dropZone = document.getElementById('drop-zone');
 
-        function updateMonoBassUI(isActive) {
-            isMonoBassActive = isActive;
-            if(isActive) {
-                iconMonoBass.innerText = '[ x ]';
-                iconMonoBass.style.color = 'var(--neon-cyan)';
-            } else {
-                iconMonoBass.innerText = '[   ]';
-                iconMonoBass.style.color = 'var(--text-muted)';
-            }
-        }
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--text-muted)'; });
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--text-muted)';
+    if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+});
 
-        btnMonoBass.addEventListener('click', () => {
-            updateMonoBassUI(!isMonoBassActive);
-        });
+// Botón de upload invisible
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
+fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+document.querySelector('.left-column .btn-action').addEventListener('click', () => fileInput.click());
 
-        // Cargar el preset inicial por defecto
-        document.getElementById('preset-selector').dispatchEvent(new Event('change'));
+async function processFile(file) {
+    const textStatus = document.querySelector('.left-column div > span');
+    textStatus.innerText = "Cargando en memoria...";
+    textStatus.style.color = 'var(--neon-magenta)';
+    
+    // Optimización: Liberar memoria anterior
+    if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
+    originalBuffer = null;
 
-    </script>
+    const arrayBuffer = await file.arrayBuffer();
+    audioContext.decodeAudioData(arrayBuffer, (buffer) => {
+        originalBuffer = buffer;
+        textStatus.innerText = file.name;
+        textStatus.style.color = 'var(--neon-cyan)';
+        buildAudioGraph();
+    }, (err) => {
+        textStatus.innerText = "Error al decodificar.";
+        textStatus.style.color = 'red';
+    });
+}
+
+// ==========================================
+// 6. REPRODUCCIÓN (A/B MONITOR)
+// ==========================================
+const playOriginalBtn = document.querySelectorAll('.play-btn')[0];
+const playMasteredBtn = document.querySelectorAll('.play-btn')[1];
+
+function playBuffer(mode) {
+    if (!originalBuffer) return alert("Sube una pista primero");
+    
+    if (audioContext.state === 'suspended') audioContext.resume();
+    
+    if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
+
+    sourceNode = audioContext.createBufferSource();
+    sourceNode.buffer = originalBuffer;
+
+    if (mode === 'original') {
+        sourceNode.connect(audioContext.destination); // Directo a la salida
+    } else {
+        sourceNode.connect(nodes.in); // Pasa por la cadena de masterización
+    }
+
+    sourceNode.start(0);
+    isPlaying = true;
+    currentMode = mode;
+
+    playOriginalBtn.innerText = mode === 'original' ? 'Stop' : 'Play';
+    playMasteredBtn.innerText = mode === 'mastered' ? 'Stop' : 'Play';
+}
+
+function stopPlayback() {
+    if (sourceNode && isPlaying) {
+        sourceNode.stop();
+        isPlaying = false;
+        playOriginalBtn.innerText = 'Play';
+        playMasteredBtn.innerText = 'Play';
+    }
+}
+
+playOriginalBtn.addEventListener('click', () => isPlaying && currentMode === 'original' ? stopPlayback() : playBuffer('original'));
+playMasteredBtn.addEventListener('click', () => isPlaying && currentMode === 'mastered' ? stopPlayback() : playBuffer('mastered'));
+
+// Inicializar preajuste
+document.getElementById('preset-selector').dispatchEvent(new Event('change'));
 </body>
 </html>
