@@ -291,6 +291,9 @@
 </head>
 <body>
 
+    <!-- INPUT OCULTO DENTRO DEL DOM PARA COMPATIBILIDAD NATIVA -->
+    <input type="file" id="file-input" accept="audio/*" style="display: none;">
+
     <h1>MEOW MASTERING 3</h1>
 
     <div class="app-container">
@@ -456,7 +459,7 @@
         </div>
     </div>
 
-    <!-- LÓGICA COMPLETA JAVASCRIPT -->
+    <!-- LÓGICA JAVASCRIPT CORREGIDA -->
     <script>
         // 1. ESTADO GLOBAL
         let audioCtx = null;
@@ -482,8 +485,9 @@
         const trackStatus = document.getElementById('track-status');
         const btnPlayOrig = document.getElementById('btn-play-orig');
         const btnPlayMast = document.getElementById('btn-play-mast');
+        const fileInput = document.getElementById('file-input');
 
-        // Inicializar AudioContext bajo demanda
+        // Inicializar Contexto de Audio con compatibilidad
         function getAudioContext() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -492,6 +496,17 @@
                 audioCtx.resume();
             }
             return audioCtx;
+        }
+
+        // DECODIFICADOR UNIVERSAL (Compatibilidad con Safari / WebKit y Chrome)
+        function decodeAudioAsync(context, arrayBuffer) {
+            return new Promise((resolve, reject) => {
+                context.decodeAudioData(
+                    arrayBuffer,
+                    (buffer) => resolve(buffer),
+                    (err) => reject(err)
+                );
+            });
         }
 
         // 2. LIMITADOR BRICKWALL & TRUE PEAK CEILING
@@ -587,9 +602,6 @@
 
         // 4. CARGA DE ARCHIVOS
         const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'audio/*';
 
         dropZone.addEventListener('click', () => fileInput.click());
         document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
@@ -602,7 +614,12 @@
             if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
         });
 
-        fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                processFile(e.target.files[0]);
+                e.target.value = ''; // Permite recargar el mismo archivo si se desea
+            }
+        });
 
         async function processFile(file) {
             const ctx = getAudioContext();
@@ -617,7 +634,7 @@
 
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                originalBuffer = await ctx.decodeAudioData(arrayBuffer);
+                originalBuffer = await decodeAudioAsync(ctx, arrayBuffer);
                 
                 trackStatus.innerText = file.name;
                 trackStatus.style.color = 'var(--neon-cyan)';
