@@ -602,8 +602,10 @@
 
         // 4. CARGA DE ARCHIVOS
         const dropZone = document.getElementById('drop-zone');
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 
-        dropZone.addEventListener('click', () => fileInput.click());
         document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
 
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
