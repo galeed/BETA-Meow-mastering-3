@@ -732,9 +732,38 @@ btnProcessMaster.addEventListener('click', async () => {
 
     offlineSource.start(0);
 
-    // Iniciar renderizado
-    try {
+   try {
         const renderedBuffer = await offlineCtx.startRendering();
+
+        // ----------------------------------------------------
+        // INSERCIÓN ETAPA B: Aplicar limitador de True Peak
+        // ----------------------------------------------------
+        const truePeakVal = parseFloat(document.getElementById('sl-truePeak').value);
+        applyTruePeakLimiter(renderedBuffer, truePeakVal);
+        // ----------------------------------------------------
+
+        clearInterval(progressInterval);
+        
+        masteredBuffer = renderedBuffer;
+        
+        // Finalizar UI de progreso
+        progressBar.style.width = '100%';
+        processStatus.innerText = "¡Master completado y limitado!";
+        processStatus.style.color = "var(--neon-cyan)";
+        
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+            processStatus.style.display = 'none';
+            processStatus.style.color = "var(--text-muted)";
+            btnProcessMaster.disabled = false;
+            isProcessing = false;
+        }, 2000);
+
+    } catch (err) {
+        // ... manejo de errores ...
+    }
+        
+        
         clearInterval(progressInterval);
         
         masteredBuffer = renderedBuffer;
