@@ -28,7 +28,6 @@
             min-height: 100vh;
         }
 
-        /* Tipografía de Títulos */
         h1, h2, h3 {
             font-family: 'Orbitron', sans-serif;
             margin-top: 0;
@@ -61,7 +60,6 @@
             margin-top: 20px;
         }
 
-        /* Layout Grid Principal (Replicando MSTRMND) */
         .app-container {
             display: grid;
             grid-template-columns: 320px 1fr;
@@ -70,19 +68,12 @@
             margin: 0 auto;
         }
 
-        .left-column {
+        .left-column, .right-column {
             display: flex;
             flex-direction: column;
             gap: 25px;
         }
 
-        .right-column {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-
-        /* Paneles Glassmorphism */
         .glass-panel {
             background: var(--panel-bg);
             backdrop-filter: blur(16px);
@@ -93,7 +84,6 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
         }
 
-        /* Controles y Botones */
         button, select {
             background: rgba(0, 0, 0, 0.4);
             color: var(--text-main);
@@ -133,7 +123,6 @@
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
         }
 
-        /* Zona de arrastrar y soltar */
         .drop-zone {
             border: 2px dashed var(--text-muted);
             border-radius: 8px;
@@ -151,7 +140,6 @@
             background: rgba(0, 255, 204, 0.05);
         }
 
-        /* Reproductor Estático A/B */
         .player-row {
             display: flex;
             align-items: center;
@@ -174,7 +162,6 @@
             color: var(--neon-magenta);
         }
 
-        /* Grid de Controles (Sliders) */
         .controls-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -198,7 +185,6 @@
             color: var(--neon-cyan);
         }
 
-        /* Estilo Sliders */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
@@ -224,7 +210,6 @@
             cursor: pointer;
         }
 
-        /* Formato Salida (Abajo) */
         .output-format-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -242,17 +227,9 @@
             margin-top: 5px;
         }
 
-        /* Responsive */
         @media (max-width: 900px) {
-            .app-container {
-                grid-template-columns: 1fr;
-            }
-            .controls-grid {
-                grid-template-columns: 1fr;
-            }
-            .output-format-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+            .app-container, .controls-grid { grid-template-columns: 1fr; }
+            .output-format-grid { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
@@ -264,8 +241,6 @@
         
         <!-- COLUMNA IZQUIERDA -->
         <div class="left-column">
-            
-            <!-- Track Queue -->
             <div class="glass-panel">
                 <h2>Track Queue</h2>
                 <div class="drop-zone" id="drop-zone">
@@ -279,21 +254,18 @@
                 </div>
             </div>
 
-            <!-- A/B Monitor -->
             <div class="glass-panel">
                 <h2>A/B Monitor</h2>
                 <div style="font-size: 0.8rem; margin-bottom: 15px; color: var(--text-muted);">
                     LUFS Match: <span style="color: var(--neon-cyan);">No track selected</span>
                 </div>
                 
-                <!-- Reproductor Original (Estático, sin visualizador) -->
                 <div class="player-row">
                     <span style="color: var(--text-muted);">Original</span>
                     <span>00:00 / 00:00</span>
                     <button class="play-btn">Play</button>
                 </div>
                 
-                <!-- Reproductor Mastered -->
                 <div class="player-row">
                     <span style="color: var(--neon-magenta);">Mastered</span>
                     <span>00:00 / 00:00</span>
@@ -306,116 +278,110 @@
 
         <!-- COLUMNA DERECHA -->
         <div class="right-column">
-            
-            <!-- Mastering Controls -->
             <div class="glass-panel">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px; margin-bottom: 20px;">
                     <h2 style="border: none; padding: 0; margin: 0;">Mastering Controls</h2>
-                    <select id="presets" style="width: 200px; margin: 0;">
+                    <select id="preset-selector" style="width: 250px; margin: 0;">
                         <option value="transparent">Transparent</option>
                         <option value="warm">Warm & Punchy</option>
                         <option value="agressive">Agressive</option>
+                        <option value="chat_noir">Le Chat Noir (Industrial)</option>
                     </select>
                 </div>
 
-                <!-- Grid de Controles Internos -->
                 <div class="controls-grid">
                     
-                    <!-- Columna 1: Loudness & Tone -->
                     <div>
                         <h3>Loudness and Safety</h3>
                         <div class="control-item">
-                            <div class="control-header"><span>Target LUFS</span><span class="control-value">-14.0</span></div>
-                            <input type="range" min="-24" max="-6" step="0.5" value="-14">
+                            <div class="control-header"><span>Target LUFS</span><span class="control-value" id="val-lufs">-14.0</span></div>
+                            <input type="range" id="sl-lufs" data-suffix="" min="-24" max="-6" step="0.5" value="-14">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>True Peak Ceiling</span><span class="control-value">-1.0 dBTP</span></div>
-                            <input type="range" min="-3" max="0" step="0.1" value="-1.0">
+                            <div class="control-header"><span>True Peak Ceiling</span><span class="control-value" id="val-truePeak">-1.0 dBTP</span></div>
+                            <input type="range" id="sl-truePeak" data-suffix=" dBTP" min="-3" max="0" step="0.1" value="-1.0">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>Output Trim</span><span class="control-value">0.0 dB</span></div>
-                            <input type="range" min="-12" max="12" step="0.1" value="0">
+                            <div class="control-header"><span>Output Trim</span><span class="control-value" id="val-trim">0.0 dB</span></div>
+                            <input type="range" id="sl-trim" data-suffix=" dB" min="-12" max="12" step="0.1" value="0">
                         </div>
 
                         <h3>Tone Character</h3>
                         <div class="control-item">
-                            <div class="control-header"><span>Warmth</span><span class="control-value">24%</span></div>
-                            <input type="range" min="0" max="100" value="24">
+                            <div class="control-header"><span>Warmth</span><span class="control-value" id="val-warmth">0%</span></div>
+                            <input type="range" id="sl-warmth" data-suffix="%" min="0" max="100" value="0">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>Clarity (De-harsh)</span><span class="control-value">34%</span></div>
-                            <input type="range" min="0" max="100" value="34">
+                            <div class="control-header"><span>Clarity (De-harsh)</span><span class="control-value" id="val-clarity">10%</span></div>
+                            <input type="range" id="sl-clarity" data-suffix="%" min="0" max="100" value="10">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>Air</span><span class="control-value">14%</span></div>
-                            <input type="range" min="0" max="100" value="14">
+                            <div class="control-header"><span>Air</span><span class="control-value" id="val-air">5%</span></div>
+                            <input type="range" id="sl-air" data-suffix="%" min="0" max="100" value="5">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>Low-end Clean</span><span class="control-value">20%</span></div>
-                            <input type="range" min="0" max="100" value="20">
+                            <div class="control-header"><span>Low-end Clean</span><span class="control-value" id="val-lowClean">5%</span></div>
+                            <input type="range" id="sl-lowClean" data-suffix="%" min="0" max="100" value="5">
                         </div>
                     </div>
 
-                    <!-- Columna 2: Stereo & Dynamics -->
                     <div>
                         <h3>Stereo and Space</h3>
                         <div class="control-item">
-                            <div class="control-header"><span>Stereo Width</span><span class="control-value">105%</span></div>
-                            <input type="range" min="0" max="200" value="105">
+                            <div class="control-header"><span>Stereo Width</span><span class="control-value" id="val-stereo">100%</span></div>
+                            <input type="range" id="sl-stereo" data-suffix="%" min="0" max="200" value="100">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>Space Depth</span><span class="control-value">12%</span></div>
-                            <input type="range" min="0" max="100" value="12">
+                            <div class="control-header"><span>Space Depth</span><span class="control-value" id="val-space">5%</span></div>
+                            <input type="range" id="sl-space" data-suffix="%" min="0" max="100" value="5">
                         </div>
                         
-                        <!-- Toggle estilo checkbox (simplificado con un botón) -->
-                        <button style="margin-top: 20px; text-align: left; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1);">
-                            <span style="color: var(--neon-cyan);">[ x ]</span> Mono Bass Anchor
+                        <button id="btn-mono-bass" style="margin-top: 20px; text-align: left; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1);">
+                            <span style="color: var(--text-muted);" id="icon-mono-bass">[   ]</span> Mono Bass Anchor
                         </button>
 
                         <h3>Dynamics</h3>
                         <div class="control-item">
-                            <div class="control-header"><span>Glue Compression</span><span class="control-value">12%</span></div>
-                            <input type="range" min="0" max="100" value="12">
+                            <div class="control-header"><span>Glue Compression</span><span class="control-value" id="val-glue">5%</span></div>
+                            <input type="range" id="sl-glue" data-suffix="%" min="0" max="100" value="5">
                         </div>
                         <div class="control-item" style="margin-top: 15px;">
-                            <div class="control-header"><span>Auto-level Strength</span><span class="control-value">12%</span></div>
-                            <input type="range" min="0" max="100" value="12">
+                            <div class="control-header"><span>Auto-level Strength</span><span class="control-value" id="val-autoLevel">0%</span></div>
+                            <input type="range" id="sl-autoLevel" data-suffix="%" min="0" max="100" value="0">
                         </div>
                     </div>
 
                 </div>
             </div>
 
-            <!-- Output Format -->
             <div class="glass-panel">
                 <h2 style="border: none; margin-bottom: 10px;">Output Format</h2>
                 <div class="output-format-grid">
                     <div>
                         Format
                         <select>
-                            <option>WAV</option>
+                            <option selected>WAV</option>
                             <option>FLAC</option>
                         </select>
                     </div>
                     <div>
                         Sample Rate
                         <select>
-                            <option>48 kHz</option>
+                            <option selected>48 kHz</option>
                             <option>44.1 kHz</option>
                         </select>
                     </div>
                     <div>
                         Bit Depth
                         <select>
-                            <option>24-bit</option>
+                            <option selected>24-bit</option>
                             <option>16-bit</option>
                         </select>
                     </div>
                     <div>
                         Dither
                         <select>
-                            <option>None</option>
+                            <option selected>None</option>
                             <option>TPDF</option>
                         </select>
                     </div>
@@ -425,5 +391,81 @@
         </div>
     </div>
 
+    <!-- Lógica de Interactividad y Presets -->
+    <script>
+        // 1. Definimos los presets
+        const presets = {
+            transparent: { lufs: -14.0, truePeak: -1.0, trim: 0.0, warmth: 0, clarity: 10, air: 5, lowClean: 5, stereo: 100, space: 5, glue: 5, autoLevel: 0, monoBass: false },
+            warm: { lufs: -12.0, truePeak: -1.0, trim: 0.0, warmth: 24, clarity: 34, air: 14, lowClean: 20, stereo: 105, space: 12, glue: 12, autoLevel: 12, monoBass: true },
+            agressive: { lufs: -9.0, truePeak: -0.5, trim: 0.5, warmth: 45, clarity: 20, air: 25, lowClean: 40, stereo: 110, space: 15, glue: 35, autoLevel: 25, monoBass: true },
+            chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 60, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
+        };
+
+        // 2. Función para actualizar un slider y su texto
+        function setControlValue(id, value) {
+            const slider = document.getElementById(`sl-${id}`);
+            const textDisplay = document.getElementById(`val-${id}`);
+            
+            if (slider && textDisplay) {
+                slider.value = value;
+                // Forzamos 1 decimal si es LUFS, TruePeak o Trim
+                let displayVal = value;
+                if (['lufs', 'truePeak', 'trim'].includes(id)) {
+                    displayVal = parseFloat(value).toFixed(1);
+                    // Añadimos signo '+' si es positivo en el Trim
+                    if (id === 'trim' && value > 0) displayVal = '+' + displayVal;
+                }
+                textDisplay.innerText = displayVal + slider.getAttribute('data-suffix');
+            }
+        }
+
+        // 3. Listener para el selector de presets
+        document.getElementById('preset-selector').addEventListener('change', (e) => {
+            const selectedPreset = presets[e.target.value];
+            if (!selectedPreset) return;
+
+            // Iteramos sobre las llaves del preset para actualizar la UI
+            Object.keys(selectedPreset).forEach(key => {
+                if (key === 'monoBass') {
+                    updateMonoBassUI(selectedPreset[key]);
+                } else {
+                    setControlValue(key, selectedPreset[key]);
+                }
+            });
+        });
+
+        // 4. Listeners para actualizar el texto en tiempo real al mover los sliders manualmente
+        const allSliders = document.querySelectorAll('input[type="range"]');
+        allSliders.forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const id = e.target.id.replace('sl-', '');
+                setControlValue(id, e.target.value);
+            });
+        });
+
+        // 5. Lógica del botón Toggle "Mono Bass Anchor"
+        let isMonoBassActive = false;
+        const btnMonoBass = document.getElementById('btn-mono-bass');
+        const iconMonoBass = document.getElementById('icon-mono-bass');
+
+        function updateMonoBassUI(isActive) {
+            isMonoBassActive = isActive;
+            if(isActive) {
+                iconMonoBass.innerText = '[ x ]';
+                iconMonoBass.style.color = 'var(--neon-cyan)';
+            } else {
+                iconMonoBass.innerText = '[   ]';
+                iconMonoBass.style.color = 'var(--text-muted)';
+            }
+        }
+
+        btnMonoBass.addEventListener('click', () => {
+            updateMonoBassUI(!isMonoBassActive);
+        });
+
+        // Cargar el preset inicial por defecto
+        document.getElementById('preset-selector').dispatchEvent(new Event('change'));
+
+    </script>
 </body>
 </html>
