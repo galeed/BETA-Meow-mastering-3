@@ -477,6 +477,22 @@
             chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 80, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
         };
 
+        // 1. ESTADO GLOBAL
+        let audioCtx = null;
+        let originalBuffer = null;
+        let masteredBuffer = null;
+        let sourceNode = null;
+        let isPlaying = false;
+        let currentMode = 'original';
+        let isProcessing = false;
+
+        const presets = {
+            transparent: { lufs: -14.0, truePeak: -1.0, trim: 0.0, warmth: 0, clarity: 10, air: 5, lowClean: 5, stereo: 100, space: 5, glue: 5, autoLevel: 0, monoBass: false },
+            warm: { lufs: -12.0, truePeak: -1.0, trim: 0.0, warmth: 24, clarity: 34, air: 14, lowClean: 20, stereo: 105, space: 12, glue: 12, autoLevel: 12, monoBass: true },
+            agressive: { lufs: -9.0, truePeak: -0.5, trim: 0.5, warmth: 45, clarity: 20, air: 25, lowClean: 40, stereo: 110, space: 15, glue: 35, autoLevel: 25, monoBass: true },
+            chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 80, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
+        };
+
         // ELEMENTOS UI
         const btnProcessMaster = document.getElementById('btn-process-master');
         const progressContainer = document.getElementById('progress-container');
@@ -486,30 +502,21 @@
         const btnPlayOrig = document.getElementById('btn-play-orig');
         const btnPlayMast = document.getElementById('btn-play-mast');
         const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const btnUpload = document.getElementById('btn-upload');
 
-        // Inicializar Contexto de Audio con compatibilidad
-        function getAudioContext() {
+        // 2. INICIALIZACIÓN ESTRICTA DE AUDIO
+        // Esto fuerza al navegador a despertar el motor de audio de inmediato
+        function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
-            return audioCtx;
         }
 
-        // DECODIFICADOR UNIVERSAL (Compatibilidad con Safari / WebKit y Chrome)
-        function decodeAudioAsync(context, arrayBuffer) {
-            return new Promise((resolve, reject) => {
-                context.decodeAudioData(
-                    arrayBuffer,
-                    (buffer) => resolve(buffer),
-                    (err) => reject(err)
-                );
-            });
-        }
-
-        // 2. LIMITADOR BRICKWALL & TRUE PEAK CEILING
+        // 3. LIMITADOR BRICKWALL & TRUE PEAK CEILING
         function applyTruePeakLimiter(buffer, ceilingdB) {
             const ceilingLinear = Math.pow(10, ceilingdB / 20);
             const numChannels = buffer.numberOfChannels;
@@ -547,7 +554,7 @@
             return curve;
         }
 
-        // 3. UI CONTROLS & PRESETS
+        // 4. UI CONTROLS & PRESETS
         function setControlValue(id, value) {
             const slider = document.getElementById(`sl-${id}`);
             const textDisplay = document.getElementById(`val-${id}`);
@@ -600,57 +607,86 @@
             }
         }
 
-        // 4. CARGA DE ARCHIVOS
-        const dropZone = document.getElementById('drop-zone');
+        // 5. CARGA DE ARCHIVOS ROBUSTA
+        // Enlazar los clics físicos con la inicialización del motor
+        btnUpload.addEventListener('click', () => {
+            initAudio();
+            fileInput.click();
+        });
 
-        dropZone.addEventListener('click', () => fileInput.click());
-        document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('click', () => {
+            initAudio();
+            fileInput.click();
+        });
+
+        dropZone.addEventListener('dragover', (e) => { 
+            e.preventDefault(); 
+            dropZone.style.borderColor = 'var(--neon-magenta)'; 
+        });
         
-        fileInput.type = 'file';
-fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
-
-
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
-        dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--text-muted)'; });
+        dropZone.addEventListener('dragleave', () => { 
+            dropZone.style.borderColor = 'var(--text-muted)'; 
+        });
+        
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.style.borderColor = 'var(--text-muted)';
-            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+            if (e.dataTransfer.files.length) {
+                initAudio();
+                processFile(e.dataTransfer.files[0]);
+            }
         });
 
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length) {
                 processFile(e.target.files[0]);
-                e.target.value = ''; // Permite recargar el mismo archivo si se desea
+                e.target.value = ''; 
             }
         });
 
-        async function processFile(file) {
-            const ctx = getAudioContext();
+        // Motor de lectura y decodificación universal
+        function processFile(file) {
             stopPlayback();
-            
-            trackStatus.innerText = "Decodificando...";
+            trackStatus.innerText = "Leyendo archivo...";
             trackStatus.style.color = 'var(--neon-magenta)';
             btnProcessMaster.disabled = true;
             
             originalBuffer = null;
             masteredBuffer = null;
 
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                originalBuffer = await decodeAudioAsync(ctx, arrayBuffer);
+            // FileReader es el método más compatible a nivel de sistema operativo
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                trackStatus.innerText = "Decodificando audio...";
+                const arrayBuffer = e.target.result;
                 
-                trackStatus.innerText = file.name;
-                trackStatus.style.color = 'var(--neon-cyan)';
-                btnProcessMaster.disabled = false;
-            } catch (err) {
-                console.error(err);
-                trackStatus.innerText = "Error al decodificar audio.";
+                // Patrón clásico de Callbacks (Obligatorio para evitar bloqueos en WebKit/Móviles)
+                audioCtx.decodeAudioData(
+                    arrayBuffer, 
+                    function(buffer) {
+                        originalBuffer = buffer;
+                        trackStatus.innerText = file.name;
+                        trackStatus.style.color = 'var(--neon-cyan)';
+                        btnProcessMaster.disabled = false;
+                    }, 
+                    function(err) {
+                        trackStatus.innerText = "Error: Formato no soportado o corrupto.";
+                        trackStatus.style.color = 'red';
+                        console.error("Error decodeAudioData:", err);
+                    }
+                );
+            };
+            
+            reader.onerror = function() {
+                trackStatus.innerText = "Error de lectura en el navegador.";
                 trackStatus.style.color = 'red';
-            }
+            };
+
+            reader.readAsArrayBuffer(file);
         }
 
-        // 5. PROCESAMIENTO OFFLINE
+        // 6. PROCESAMIENTO OFFLINE
         btnProcessMaster.addEventListener('click', async () => {
             if (!originalBuffer || isProcessing) return;
             
@@ -708,7 +744,6 @@ fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 
             offOutTrim.gain.value = Math.pow(10, val('trim') / 20);
 
-            // Conexión
             offlineSource.connect(offLowClean);
             offLowClean.connect(offWarmth);
             offWarmth.connect(offClarity);
@@ -722,7 +757,6 @@ fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
             try {
                 const renderedBuffer = await offlineCtx.startRendering();
 
-                // Aplicar Limitador True Peak
                 const truePeakVal = parseFloat(document.getElementById('sl-truePeak').value);
                 applyTruePeakLimiter(renderedBuffer, truePeakVal);
 
@@ -750,19 +784,19 @@ fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
             }
         });
 
-        // 6. REPRODUCCIÓN (A/B MONITOR)
+        // 7. REPRODUCCIÓN (A/B MONITOR)
         function playBuffer(mode) {
             if (!originalBuffer) return alert("Carga una pista de audio primero.");
             if (mode === 'mastered' && !masteredBuffer) {
                 return alert("Debes hacer clic en 'Procesar Master' primero.");
             }
 
-            const ctx = getAudioContext();
+            initAudio();
             stopPlayback();
 
-            sourceNode = ctx.createBufferSource();
+            sourceNode = audioCtx.createBufferSource();
             sourceNode.buffer = (mode === 'original') ? originalBuffer : masteredBuffer;
-            sourceNode.connect(ctx.destination);
+            sourceNode.connect(audioCtx.destination);
 
             sourceNode.start(0);
             isPlaying = true;
@@ -794,6 +828,6 @@ fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 
         // Carga inicial
         document.getElementById('preset-selector').dispatchEvent(new Event('change'));
-    </script>
+</script>
 </body>
 </html>
