@@ -231,6 +231,62 @@
             .app-container, .controls-grid { grid-template-columns: 1fr; }
             .output-format-grid { grid-template-columns: 1fr 1fr; }
         }
+        
+        /* Barra de progreso y estado */
+.process-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--panel-border);
+}
+
+.progress-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+    display: none; /* Oculto por defecto */
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan);
+    transition: width 0.3s ease;
+}
+
+.status-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    text-align: right;
+    display: none;
+}
+
+.btn-process {
+    background: rgba(255, 0, 255, 0.1);
+    border-color: var(--neon-magenta);
+    color: var(--neon-magenta);
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(255, 0, 255, 0.4);
+    margin-top: 10px;
+}
+
+.btn-process:hover:not(:disabled) {
+    background: rgba(255, 0, 255, 0.2);
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+}
+
+.btn-process:disabled {
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    text-shadow: none;
+    cursor: not-allowed;
+    background: rgba(0,0,0,0.2);
+}
+
     </style>
 </head>
 <body>
@@ -248,10 +304,20 @@
                     (WAV · MP3 · FLAC)
                 </div>
                 <button class="btn-action">Upload Start</button>
-                <div style="margin-top: 15px; font-size: 0.8rem; color: var(--text-muted);">
-                    Uploaded Track<br>
-                    <span style="color: var(--text-main);">Sin pistas en cola.</span>
-                </div>
+                <!-- Reemplaza el div de "Uploaded Track" por este bloque completo -->
+<div style="margin-top: 15px; font-size: 0.8rem; color: var(--text-muted);">
+    Uploaded Track<br>
+    <span id="track-status" style="color: var(--text-main); word-break: break-all;">Sin pistas en cola.</span>
+</div>
+
+<!-- NUEVA SECCIÓN DE PROCESAMIENTO -->
+<div class="process-section">
+    <button id="btn-process-master" class="btn-process" disabled>Procesar Master</button>
+    <div id="progress-container" class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <div id="process-status" class="status-text">Calculando audio... 0%</div>
+</div>
             </div>
 
             <div class="glass-panel">
@@ -536,10 +602,24 @@ function updateMonoBassUI(isActive) {
 }
 document.getElementById('btn-mono-bass').addEventListener('click', () => updateMonoBassUI(!isMonoBassActive));
 
+// Nuevas variables globales
+let masteredBuffer = null;
+let isProcessing = false;
+
+// Elementos UI de la barra de estado
+const btnProcessMaster = document.getElementById('btn-process-master');
+const progressContainer = document.getElementById('progress-container');
+const progressBar = document.getElementById('progress-bar');
+const processStatus = document.getElementById('process-status');
+const trackStatus = document.getElementById('track-status');
+
 // ==========================================
 // 5. CARGA DE ARCHIVOS Y DRAG & DROP
 // ==========================================
 const dropZone = document.getElementById('drop-zone');
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
 dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--text-muted)'; });
@@ -549,33 +629,137 @@ dropZone.addEventListener('drop', (e) => {
     if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
 });
 
-// Botón de upload invisible
-const fileInput = document.createElement('input');
-fileInput.type = 'file';
-fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
 fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
 document.querySelector('.left-column .btn-action').addEventListener('click', () => fileInput.click());
 
 async function processFile(file) {
-    const textStatus = document.querySelector('.left-column div > span');
-    textStatus.innerText = "Cargando en memoria...";
-    textStatus.style.color = 'var(--neon-magenta)';
+    trackStatus.innerText = "Decodificando...";
+    trackStatus.style.color = 'var(--neon-magenta)';
+    btnProcessMaster.disabled = true;
     
-    // Optimización: Liberar memoria anterior
     if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
     originalBuffer = null;
+    masteredBuffer = null; // Reiniciar buffer masterizado
 
     const arrayBuffer = await file.arrayBuffer();
     audioContext.decodeAudioData(arrayBuffer, (buffer) => {
         originalBuffer = buffer;
-        textStatus.innerText = file.name;
-        textStatus.style.color = 'var(--neon-cyan)';
-        buildAudioGraph();
-    }, (err) => {
-        textStatus.innerText = "Error al decodificar.";
-        textStatus.style.color = 'red';
+        trackStatus.innerText = file.name;
+        trackStatus.style.color = 'var(--neon-cyan)';
+        btnProcessMaster.disabled = false; // Habilitar botón de procesar
+        
+        // Configurar los nodos en el contexto normal para visualización (opcional, pero buena práctica)
+        buildAudioGraph(); 
+    }, () => {
+        trackStatus.innerText = "Error al decodificar.";
+        trackStatus.style.color = 'red';
     });
 }
+
+// ==========================================
+// 5.5 PROCESAMIENTO OFFLINE (EL "RENDER")
+// ==========================================
+btnProcessMaster.addEventListener('click', async () => {
+    if (!originalBuffer || isProcessing) return;
+    
+    isProcessing = true;
+    btnProcessMaster.disabled = true;
+    progressContainer.style.display = 'block';
+    processStatus.style.display = 'block';
+    progressBar.style.width = '0%';
+    
+    // Simular progreso visual mientras el navegador prepara el contexto offline
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += (100 - progress) * 0.1; // Simulación de carga no lineal
+        progressBar.style.width = `${progress}%`;
+        processStatus.innerText = `Aplicando preset... ${Math.round(progress)}%`;
+    }, 50);
+
+    // Contexto Offline (Renderizado ultra rápido sin reproducir)
+    const offlineCtx = new OfflineAudioContext(
+        originalBuffer.numberOfChannels, 
+        originalBuffer.length, 
+        originalBuffer.sampleRate
+    );
+
+    // Crear fuente
+    const offlineSource = offlineCtx.createBufferSource();
+    offlineSource.buffer = originalBuffer;
+
+    // Crear nodos de procesamiento en el OfflineContext
+    const offLowClean = offlineCtx.createBiquadFilter();
+    const offWarmth = offlineCtx.createWaveShaper();
+    const offClarity = offlineCtx.createBiquadFilter();
+    const offAir = offlineCtx.createBiquadFilter();
+    const offGlue = offlineCtx.createDynamicsCompressor();
+    const offOutTrim = offlineCtx.createGain();
+
+    // Copiar valores de la UI (la misma lógica de updateAudioNodes, pero para el render)
+    const val = (id) => parseFloat(document.getElementById(`sl-${id}`).value);
+
+    offLowClean.type = 'highpass';
+    offLowClean.frequency.value = 20 + (val('lowClean') * 1.5);
+
+    const warmthVal = val('warmth');
+    offWarmth.curve = warmthVal > 0 ? makeDistortionCurve(warmthVal * 4) : null;
+
+    offClarity.type = 'peaking';
+    offClarity.frequency.value = 3500;
+    offClarity.Q.value = 1.5;
+    offClarity.gain.value = -(val('clarity') / 15);
+
+    offAir.type = 'highshelf';
+    offAir.frequency.value = 10000;
+    offAir.gain.value = val('air') / 10;
+
+    offGlue.threshold.value = -10;
+    offGlue.knee.value = 10;
+    offGlue.attack.value = 0.01;
+    offGlue.release.value = 0.1;
+    offGlue.ratio.value = 1 + (val('glue') / 20);
+
+    offOutTrim.gain.value = Math.pow(10, val('trim') / 20);
+
+    // Conectar nodos Offline
+    offlineSource.connect(offLowClean);
+    offLowClean.connect(offWarmth);
+    offWarmth.connect(offClarity);
+    offClarity.connect(offAir);
+    offAir.connect(offGlue);
+    offGlue.connect(offOutTrim);
+    offOutTrim.connect(offlineCtx.destination);
+
+    offlineSource.start(0);
+
+    // Iniciar renderizado
+    try {
+        const renderedBuffer = await offlineCtx.startRendering();
+        clearInterval(progressInterval);
+        
+        masteredBuffer = renderedBuffer;
+        
+        // Finalizar UI de progreso
+        progressBar.style.width = '100%';
+        processStatus.innerText = "¡Master completado!";
+        processStatus.style.color = "var(--neon-cyan)";
+        
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+            processStatus.style.display = 'none';
+            processStatus.style.color = "var(--text-muted)";
+            btnProcessMaster.disabled = false;
+            isProcessing = false;
+        }, 2000); // Ocultar después de 2 segundos
+
+    } catch (err) {
+        clearInterval(progressInterval);
+        processStatus.innerText = "Error en el procesamiento";
+        processStatus.style.color = "red";
+        btnProcessMaster.disabled = false;
+        isProcessing = false;
+    }
+});
 
 // ==========================================
 // 6. REPRODUCCIÓN (A/B MONITOR)
@@ -586,19 +770,26 @@ const playMasteredBtn = document.querySelectorAll('.play-btn')[1];
 function playBuffer(mode) {
     if (!originalBuffer) return alert("Sube una pista primero");
     
-    if (audioContext.state === 'suspended') audioContext.resume();
+    // Validar si el master está renderizado
+    if (mode === 'mastered' && !masteredBuffer) {
+        return alert("Debes presionar 'Procesar Master' primero.");
+    }
     
+    if (audioContext.state === 'suspended') audioContext.resume();
     if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
 
     sourceNode = audioContext.createBufferSource();
-    sourceNode.buffer = originalBuffer;
-
+    
+    // Seleccionar el buffer correcto según el modo
     if (mode === 'original') {
-        sourceNode.connect(audioContext.destination); // Directo a la salida
+        sourceNode.buffer = originalBuffer;
     } else {
-        sourceNode.connect(nodes.in); // Pasa por la cadena de masterización
+        sourceNode.buffer = masteredBuffer;
     }
 
+    // Como ya está procesado si es "mastered", lo mandamos directo a la salida
+    sourceNode.connect(audioContext.destination); 
+    
     sourceNode.start(0);
     isPlaying = true;
     currentMode = mode;
@@ -619,8 +810,16 @@ function stopPlayback() {
 playOriginalBtn.addEventListener('click', () => isPlaying && currentMode === 'original' ? stopPlayback() : playBuffer('original'));
 playMasteredBtn.addEventListener('click', () => isPlaying && currentMode === 'mastered' ? stopPlayback() : playBuffer('mastered'));
 
-// Inicializar preajuste
-document.getElementById('preset-selector').dispatchEvent(new Event('change'));
+// Si se mueve un slider o se cambia un preset, invalidar el master actual
+document.querySelectorAll('input[type="range"], select').forEach(el => {
+    el.addEventListener('change', () => {
+        if (originalBuffer && masteredBuffer) {
+            masteredBuffer = null; // Obligar al usuario a procesar de nuevo
+            trackStatus.innerText = "Preset modificado. Requiere procesar.";
+            trackStatus.style.color = "var(--neon-magenta)";
+        }
+    });
+});
 </script>
 
 </body>
