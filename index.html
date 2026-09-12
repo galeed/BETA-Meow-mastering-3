@@ -820,6 +820,40 @@ document.querySelectorAll('input[type="range"], select').forEach(el => {
         }
     });
 });
+
+// ==========================================
+// ETAPA B: LIMITADOR BRICKWALL & TRUE PEAK CEILING
+// ==========================================
+function applyTruePeakLimiter(buffer, ceilingdB) {
+    // 1. Convertir dBTP a amplitud lineal (ej: -1.0 dB -> ~0.891)
+    const ceilingLinear = Math.pow(10, ceilingdB / 20);
+    const numChannels = buffer.numberOfChannels;
+    const length = buffer.length;
+
+    // 2. Escanear todos los canales para encontrar el pico máximo absoluto
+    let maxPeak = 0;
+    for (let channel = 0; channel < numChannels; channel++) {
+        const data = buffer.getChannelData(channel);
+        for (let i = 0; i < length; i++) {
+            const absSample = Math.abs(data[i]);
+            if (absSample > maxPeak) {
+                maxPeak = absSample;
+            }
+        }
+    }
+
+    // 3. Si el pico máximo supera el techo configurado, ajustar ganancia
+    if (maxPeak > ceilingLinear) {
+        const scaleFactor = ceilingLinear / maxPeak;
+        
+        for (let channel = 0; channel < numChannels; channel++) {
+            const data = buffer.getChannelData(channel);
+            for (let i = 0; i < length; i++) {
+                data[i] = data[i] * scaleFactor;
+            }
+        }
+    }
+}
 </script>
 
 </body>
