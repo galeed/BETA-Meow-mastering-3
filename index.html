@@ -132,6 +132,7 @@
             font-size: 0.85rem;
             margin-bottom: 15px;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         
         .drop-zone:hover {
@@ -227,66 +228,65 @@
             margin-top: 5px;
         }
 
+        /* Barra de procesamiento */
+        .process-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--panel-border);
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan);
+            transition: width 0.3s ease;
+        }
+
+        .status-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-align: right;
+            display: none;
+        }
+
+        .btn-process {
+            background: rgba(255, 0, 255, 0.1);
+            border-color: var(--neon-magenta);
+            color: var(--neon-magenta);
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 0, 255, 0.4);
+            margin-top: 10px;
+        }
+
+        .btn-process:hover:not(:disabled) {
+            background: rgba(255, 0, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+        }
+
+        .btn-process:disabled {
+            border-color: var(--text-muted);
+            color: var(--text-muted);
+            text-shadow: none;
+            cursor: not-allowed;
+            background: rgba(0,0,0,0.2);
+        }
+
         @media (max-width: 900px) {
             .app-container, .controls-grid { grid-template-columns: 1fr; }
             .output-format-grid { grid-template-columns: 1fr 1fr; }
         }
-        
-        /* Barra de progreso y estado */
-.process-section {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--panel-border);
-}
-
-.progress-container {
-    width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-    margin-top: 10px;
-    overflow: hidden;
-    display: none; /* Oculto por defecto */
-}
-
-.progress-bar {
-    height: 100%;
-    width: 0%;
-    background: var(--neon-cyan);
-    box-shadow: 0 0 10px var(--neon-cyan);
-    transition: width 0.3s ease;
-}
-
-.status-text {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 8px;
-    text-align: right;
-    display: none;
-}
-
-.btn-process {
-    background: rgba(255, 0, 255, 0.1);
-    border-color: var(--neon-magenta);
-    color: var(--neon-magenta);
-    font-weight: bold;
-    text-shadow: 0 0 5px rgba(255, 0, 255, 0.4);
-    margin-top: 10px;
-}
-
-.btn-process:hover:not(:disabled) {
-    background: rgba(255, 0, 255, 0.2);
-    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
-}
-
-.btn-process:disabled {
-    border-color: var(--text-muted);
-    color: var(--text-muted);
-    text-shadow: none;
-    cursor: not-allowed;
-    background: rgba(0,0,0,0.2);
-}
-
     </style>
 </head>
 <body>
@@ -303,21 +303,20 @@
                     Arrastra archivos de audio aquí<br>
                     (WAV · MP3 · FLAC)
                 </div>
-                <button class="btn-action">Upload Start</button>
-                <!-- Reemplaza el div de "Uploaded Track" por este bloque completo -->
-<div style="margin-top: 15px; font-size: 0.8rem; color: var(--text-muted);">
-    Uploaded Track<br>
-    <span id="track-status" style="color: var(--text-main); word-break: break-all;">Sin pistas en cola.</span>
-</div>
+                <button class="btn-action" id="btn-upload">Upload Start</button>
+                
+                <div style="margin-top: 15px; font-size: 0.8rem; color: var(--text-muted);">
+                    Uploaded Track<br>
+                    <span id="track-status" style="color: var(--text-main); word-break: break-all;">Sin pistas en cola.</span>
+                </div>
 
-<!-- NUEVA SECCIÓN DE PROCESAMIENTO -->
-<div class="process-section">
-    <button id="btn-process-master" class="btn-process" disabled>Procesar Master</button>
-    <div id="progress-container" class="progress-container">
-        <div id="progress-bar" class="progress-bar"></div>
-    </div>
-    <div id="process-status" class="status-text">Calculando audio... 0%</div>
-</div>
+                <div class="process-section">
+                    <button id="btn-process-master" class="btn-process" disabled>Procesar Master</button>
+                    <div id="progress-container" class="progress-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div id="process-status" class="status-text">Calculando audio... 0%</div>
+                </div>
             </div>
 
             <div class="glass-panel">
@@ -328,14 +327,14 @@
                 
                 <div class="player-row">
                     <span style="color: var(--text-muted);">Original</span>
-                    <span>00:00 / 00:00</span>
-                    <button class="play-btn">Play</button>
+                    <span id="time-original">00:00 / 00:00</span>
+                    <button class="play-btn" id="btn-play-orig">Play</button>
                 </div>
                 
                 <div class="player-row">
                     <span style="color: var(--neon-magenta);">Mastered</span>
-                    <span>00:00 / 00:00</span>
-                    <button class="play-btn">Play</button>
+                    <span id="time-mastered">00:00 / 00:00</span>
+                    <button class="play-btn" id="btn-play-mast">Play</button>
                 </div>
 
                 <button class="btn-action" style="margin-top: 15px;">Download All</button>
@@ -456,434 +455,324 @@
 
         </div>
     </div>
-    
+
+    <!-- LÓGICA COMPLETA JAVASCRIPT -->
     <script>
-// ==========================================
-// 1. ESTADO Y GESTIÓN DE MEMORIA
-// ==========================================
-let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let originalBuffer = null;
-let sourceNode = null;
-let isPlaying = false;
-let currentMode = 'original'; // 'original' o 'mastered'
+        // 1. ESTADO GLOBAL
+        let audioCtx = null;
+        let originalBuffer = null;
+        let masteredBuffer = null;
+        let sourceNode = null;
+        let isPlaying = false;
+        let currentMode = 'original';
+        let isProcessing = false;
 
-// Nodos de la cadena de masterización
-let nodes = {};
+        const presets = {
+            transparent: { lufs: -14.0, truePeak: -1.0, trim: 0.0, warmth: 0, clarity: 10, air: 5, lowClean: 5, stereo: 100, space: 5, glue: 5, autoLevel: 0, monoBass: false },
+            warm: { lufs: -12.0, truePeak: -1.0, trim: 0.0, warmth: 24, clarity: 34, air: 14, lowClean: 20, stereo: 105, space: 12, glue: 12, autoLevel: 12, monoBass: true },
+            agressive: { lufs: -9.0, truePeak: -0.5, trim: 0.5, warmth: 45, clarity: 20, air: 25, lowClean: 40, stereo: 110, space: 15, glue: 35, autoLevel: 25, monoBass: true },
+            chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 80, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
+        };
 
-// Diccionario de Presets
-const presets = {
-    transparent: { lufs: -14.0, truePeak: -1.0, trim: 0.0, warmth: 0, clarity: 10, air: 5, lowClean: 5, stereo: 100, space: 5, glue: 5, autoLevel: 0, monoBass: false },
-    warm: { lufs: -12.0, truePeak: -1.0, trim: 0.0, warmth: 24, clarity: 34, air: 14, lowClean: 20, stereo: 105, space: 12, glue: 12, autoLevel: 12, monoBass: true },
-    agressive: { lufs: -9.0, truePeak: -0.5, trim: 0.5, warmth: 45, clarity: 20, air: 25, lowClean: 40, stereo: 110, space: 15, glue: 35, autoLevel: 25, monoBass: true },
-    chat_noir: { lufs: -7.5, truePeak: -0.3, trim: 0.0, warmth: 80, clarity: 30, air: 20, lowClean: 60, stereo: 115, space: 10, glue: 55, autoLevel: 40, monoBass: true }
-};
+        // ELEMENTOS UI
+        const btnProcessMaster = document.getElementById('btn-process-master');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const processStatus = document.getElementById('process-status');
+        const trackStatus = document.getElementById('track-status');
+        const btnPlayOrig = document.getElementById('btn-play-orig');
+        const btnPlayMast = document.getElementById('btn-play-mast');
 
-// ==========================================
-// 2. CONSTRUCCIÓN DE LA CADENA DE AUDIO
-// ==========================================
-function buildAudioGraph() {
-    // Si ya existen nodos, los desconectamos para evitar fugas de memoria
-    if (nodes.in) nodes.in.disconnect();
-
-    // Crear nodos
-    nodes.in = audioContext.createGain(); // Entrada
-    nodes.lowClean = audioContext.createBiquadFilter(); // HPF
-    nodes.warmth = audioContext.createWaveShaper(); // Saturador
-    nodes.clarity = audioContext.createBiquadFilter(); // Bell Filter
-    nodes.air = audioContext.createBiquadFilter(); // High Shelf
-    nodes.glue = audioContext.createDynamicsCompressor(); // Compresor
-    nodes.outTrim = audioContext.createGain(); // Salida final
-
-    // Configurar tipos de filtro
-    nodes.lowClean.type = 'highpass';
-    nodes.lowClean.frequency.value = 20; // Base de 20Hz
-
-    nodes.clarity.type = 'peaking';
-    nodes.clarity.frequency.value = 3500;
-    nodes.clarity.Q.value = 1.5;
-
-    nodes.air.type = 'highshelf';
-    nodes.air.frequency.value = 10000;
-
-    // Configurar Compresor
-    nodes.glue.threshold.value = -10;
-    nodes.glue.knee.value = 10;
-    nodes.glue.attack.value = 0.01;
-    nodes.glue.release.value = 0.1;
-
-    // Conectar cadena: Entrada -> LowClean -> Warmth -> Clarity -> Air -> Glue -> OutTrim -> Destino
-    nodes.in.connect(nodes.lowClean);
-    nodes.lowClean.connect(nodes.warmth);
-    nodes.warmth.connect(nodes.clarity);
-    nodes.clarity.connect(nodes.air);
-    nodes.air.connect(nodes.glue);
-    nodes.glue.connect(nodes.outTrim);
-    nodes.outTrim.connect(audioContext.destination);
-
-    updateAudioNodes(); // Aplicar valores de la UI
-}
-
-// Curva de saturación (Distorsión polinómica suave para WaveShaper)
-function makeDistortionCurve(amount) {
-    let k = typeof amount === 'number' ? amount : 50;
-    let n_samples = 44100;
-    let curve = new Float32Array(n_samples);
-    let deg = Math.PI / 180;
-    for (let i = 0; i < n_samples; ++i) {
-        let x = i * 2 / n_samples - 1;
-        curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
-    }
-    return curve;
-}
-
-// ==========================================
-// 3. ACTUALIZACIÓN EN TIEMPO REAL
-// ==========================================
-function updateAudioNodes() {
-    if (!nodes.in) return;
-
-    const val = (id) => parseFloat(document.getElementById(`sl-${id}`).value);
-
-    // Trim de salida
-    nodes.outTrim.gain.value = Math.pow(10, val('trim') / 20);
-
-    // Warmth (Saturación) - Mapeado de 0 a 100
-    const warmthVal = val('warmth');
-    nodes.warmth.curve = warmthVal > 0 ? makeDistortionCurve(warmthVal * 4) : null;
-
-    // EQ
-    nodes.air.gain.value = val('air') / 10; // Hasta +10dB en 10kHz
-    nodes.clarity.gain.value = -(val('clarity') / 15); // Cortar asperezas hasta -6.6dB en 3.5kHz
-    nodes.lowClean.frequency.value = 20 + (val('lowClean') * 1.5); // HPF sube hasta ~170Hz
-
-    // Compresión
-    const glueRatio = 1 + (val('glue') / 20); // Ratio de 1:1 a 6:1
-    nodes.glue.ratio.value = glueRatio;
-}
-
-// ==========================================
-// 4. LÓGICA DE INTERFAZ Y PRESETS
-// ==========================================
-function setControlValue(id, value) {
-    const slider = document.getElementById(`sl-${id}`);
-    const textDisplay = document.getElementById(`val-${id}`);
-    if (slider && textDisplay) {
-        slider.value = value;
-        let displayVal = value;
-        if (['lufs', 'truePeak', 'trim'].includes(id)) {
-            displayVal = parseFloat(value).toFixed(1);
-            if (id === 'trim' && value > 0) displayVal = '+' + displayVal;
+        // Inicializar AudioContext bajo demanda
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
         }
-        textDisplay.innerText = displayVal + slider.getAttribute('data-suffix');
-    }
-    updateAudioNodes(); // Actualizar el audio en tiempo real al mover controles
-}
 
-document.getElementById('preset-selector').addEventListener('change', (e) => {
-    const p = presets[e.target.value];
-    if (!p) return;
-    Object.keys(p).forEach(key => {
-        if (key === 'monoBass') updateMonoBassUI(p[key]);
-        else setControlValue(key, p[key]);
-    });
-});
+        // 2. LIMITADOR BRICKWALL & TRUE PEAK CEILING
+        function applyTruePeakLimiter(buffer, ceilingdB) {
+            const ceilingLinear = Math.pow(10, ceilingdB / 20);
+            const numChannels = buffer.numberOfChannels;
+            const length = buffer.length;
 
-const allSliders = document.querySelectorAll('input[type="range"]');
-allSliders.forEach(slider => {
-    slider.addEventListener('input', (e) => setControlValue(e.target.id.replace('sl-', ''), e.target.value));
-});
+            let maxPeak = 0;
+            for (let channel = 0; channel < numChannels; channel++) {
+                const data = buffer.getChannelData(channel);
+                for (let i = 0; i < length; i++) {
+                    const absSample = Math.abs(data[i]);
+                    if (absSample > maxPeak) maxPeak = absSample;
+                }
+            }
 
-let isMonoBassActive = false;
-function updateMonoBassUI(isActive) {
-    isMonoBassActive = isActive;
-    const icon = document.getElementById('icon-mono-bass');
-    icon.innerText = isActive ? '[ x ]' : '[   ]';
-    icon.style.color = isActive ? 'var(--neon-cyan)' : 'var(--text-muted)';
-}
-document.getElementById('btn-mono-bass').addEventListener('click', () => updateMonoBassUI(!isMonoBassActive));
-
-// Nuevas variables globales
-let masteredBuffer = null;
-let isProcessing = false;
-
-// Elementos UI de la barra de estado
-const btnProcessMaster = document.getElementById('btn-process-master');
-const progressContainer = document.getElementById('progress-container');
-const progressBar = document.getElementById('progress-bar');
-const processStatus = document.getElementById('process-status');
-const trackStatus = document.getElementById('track-status');
-
-// ==========================================
-// 5. CARGA DE ARCHIVOS Y DRAG & DROP
-// ==========================================
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.createElement('input');
-fileInput.type = 'file';
-fileInput.accept = 'audio/wav, audio/mp3, audio/flac';
-
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
-dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--text-muted)'; });
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--text-muted)';
-    if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
-});
-
-fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
-document.querySelector('.left-column .btn-action').addEventListener('click', () => fileInput.click());
-
-async function processFile(file) {
-    trackStatus.innerText = "Decodificando...";
-    trackStatus.style.color = 'var(--neon-magenta)';
-    btnProcessMaster.disabled = true;
-    
-    if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
-    originalBuffer = null;
-    masteredBuffer = null; // Reiniciar buffer masterizado
-
-    const arrayBuffer = await file.arrayBuffer();
-    audioContext.decodeAudioData(arrayBuffer, (buffer) => {
-        originalBuffer = buffer;
-        trackStatus.innerText = file.name;
-        trackStatus.style.color = 'var(--neon-cyan)';
-        btnProcessMaster.disabled = false; // Habilitar botón de procesar
-        
-        // Configurar los nodos en el contexto normal para visualización (opcional, pero buena práctica)
-        buildAudioGraph(); 
-    }, () => {
-        trackStatus.innerText = "Error al decodificar.";
-        trackStatus.style.color = 'red';
-    });
-}
-
-// ==========================================
-// 5.5 PROCESAMIENTO OFFLINE (EL "RENDER")
-// ==========================================
-btnProcessMaster.addEventListener('click', async () => {
-    if (!originalBuffer || isProcessing) return;
-    
-    isProcessing = true;
-    btnProcessMaster.disabled = true;
-    progressContainer.style.display = 'block';
-    processStatus.style.display = 'block';
-    progressBar.style.width = '0%';
-    
-    // Simular progreso visual mientras el navegador prepara el contexto offline
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += (100 - progress) * 0.1; // Simulación de carga no lineal
-        progressBar.style.width = `${progress}%`;
-        processStatus.innerText = `Aplicando preset... ${Math.round(progress)}%`;
-    }, 50);
-
-    // Contexto Offline (Renderizado ultra rápido sin reproducir)
-    const offlineCtx = new OfflineAudioContext(
-        originalBuffer.numberOfChannels, 
-        originalBuffer.length, 
-        originalBuffer.sampleRate
-    );
-
-    // Crear fuente
-    const offlineSource = offlineCtx.createBufferSource();
-    offlineSource.buffer = originalBuffer;
-
-    // Crear nodos de procesamiento en el OfflineContext
-    const offLowClean = offlineCtx.createBiquadFilter();
-    const offWarmth = offlineCtx.createWaveShaper();
-    const offClarity = offlineCtx.createBiquadFilter();
-    const offAir = offlineCtx.createBiquadFilter();
-    const offGlue = offlineCtx.createDynamicsCompressor();
-    const offOutTrim = offlineCtx.createGain();
-
-    // Copiar valores de la UI (la misma lógica de updateAudioNodes, pero para el render)
-    const val = (id) => parseFloat(document.getElementById(`sl-${id}`).value);
-
-    offLowClean.type = 'highpass';
-    offLowClean.frequency.value = 20 + (val('lowClean') * 1.5);
-
-    const warmthVal = val('warmth');
-    offWarmth.curve = warmthVal > 0 ? makeDistortionCurve(warmthVal * 4) : null;
-
-    offClarity.type = 'peaking';
-    offClarity.frequency.value = 3500;
-    offClarity.Q.value = 1.5;
-    offClarity.gain.value = -(val('clarity') / 15);
-
-    offAir.type = 'highshelf';
-    offAir.frequency.value = 10000;
-    offAir.gain.value = val('air') / 10;
-
-    offGlue.threshold.value = -10;
-    offGlue.knee.value = 10;
-    offGlue.attack.value = 0.01;
-    offGlue.release.value = 0.1;
-    offGlue.ratio.value = 1 + (val('glue') / 20);
-
-    offOutTrim.gain.value = Math.pow(10, val('trim') / 20);
-
-    // Conectar nodos Offline
-    offlineSource.connect(offLowClean);
-    offLowClean.connect(offWarmth);
-    offWarmth.connect(offClarity);
-    offClarity.connect(offAir);
-    offAir.connect(offGlue);
-    offGlue.connect(offOutTrim);
-    offOutTrim.connect(offlineCtx.destination);
-
-    offlineSource.start(0);
-
-   try {
-        const renderedBuffer = await offlineCtx.startRendering();
-
-        // ----------------------------------------------------
-        // INSERCIÓN ETAPA B: Aplicar limitador de True Peak
-        // ----------------------------------------------------
-        const truePeakVal = parseFloat(document.getElementById('sl-truePeak').value);
-        applyTruePeakLimiter(renderedBuffer, truePeakVal);
-        // ----------------------------------------------------
-
-        clearInterval(progressInterval);
-        
-        masteredBuffer = renderedBuffer;
-        
-        // Finalizar UI de progreso
-        progressBar.style.width = '100%';
-        processStatus.innerText = "¡Master completado y limitado!";
-        processStatus.style.color = "var(--neon-cyan)";
-        
-        setTimeout(() => {
-            progressContainer.style.display = 'none';
-            processStatus.style.display = 'none';
-            processStatus.style.color = "var(--text-muted)";
-            btnProcessMaster.disabled = false;
-            isProcessing = false;
-        }, 2000);
-
-    } catch (err) {
-        // ... manejo de errores ...
-    }
-        
-        
-        clearInterval(progressInterval);
-        
-        masteredBuffer = renderedBuffer;
-        
-        // Finalizar UI de progreso
-        progressBar.style.width = '100%';
-        processStatus.innerText = "¡Master completado!";
-        processStatus.style.color = "var(--neon-cyan)";
-        
-        setTimeout(() => {
-            progressContainer.style.display = 'none';
-            processStatus.style.display = 'none';
-            processStatus.style.color = "var(--text-muted)";
-            btnProcessMaster.disabled = false;
-            isProcessing = false;
-        }, 2000); // Ocultar después de 2 segundos
-
-    } catch (err) {
-        clearInterval(progressInterval);
-        processStatus.innerText = "Error en el procesamiento";
-        processStatus.style.color = "red";
-        btnProcessMaster.disabled = false;
-        isProcessing = false;
-    }
-});
-
-// ==========================================
-// 6. REPRODUCCIÓN (A/B MONITOR)
-// ==========================================
-const playOriginalBtn = document.querySelectorAll('.play-btn')[0];
-const playMasteredBtn = document.querySelectorAll('.play-btn')[1];
-
-function playBuffer(mode) {
-    if (!originalBuffer) return alert("Sube una pista primero");
-    
-    // Validar si el master está renderizado
-    if (mode === 'mastered' && !masteredBuffer) {
-        return alert("Debes presionar 'Procesar Master' primero.");
-    }
-    
-    if (audioContext.state === 'suspended') audioContext.resume();
-    if (sourceNode) { sourceNode.stop(); sourceNode.disconnect(); }
-
-    sourceNode = audioContext.createBufferSource();
-    
-    // Seleccionar el buffer correcto según el modo
-    if (mode === 'original') {
-        sourceNode.buffer = originalBuffer;
-    } else {
-        sourceNode.buffer = masteredBuffer;
-    }
-
-    // Como ya está procesado si es "mastered", lo mandamos directo a la salida
-    sourceNode.connect(audioContext.destination); 
-    
-    sourceNode.start(0);
-    isPlaying = true;
-    currentMode = mode;
-
-    playOriginalBtn.innerText = mode === 'original' ? 'Stop' : 'Play';
-    playMasteredBtn.innerText = mode === 'mastered' ? 'Stop' : 'Play';
-}
-
-function stopPlayback() {
-    if (sourceNode && isPlaying) {
-        sourceNode.stop();
-        isPlaying = false;
-        playOriginalBtn.innerText = 'Play';
-        playMasteredBtn.innerText = 'Play';
-    }
-}
-
-playOriginalBtn.addEventListener('click', () => isPlaying && currentMode === 'original' ? stopPlayback() : playBuffer('original'));
-playMasteredBtn.addEventListener('click', () => isPlaying && currentMode === 'mastered' ? stopPlayback() : playBuffer('mastered'));
-
-// Si se mueve un slider o se cambia un preset, invalidar el master actual
-document.querySelectorAll('input[type="range"], select').forEach(el => {
-    el.addEventListener('change', () => {
-        if (originalBuffer && masteredBuffer) {
-            masteredBuffer = null; // Obligar al usuario a procesar de nuevo
-            trackStatus.innerText = "Preset modificado. Requiere procesar.";
-            trackStatus.style.color = "var(--neon-magenta)";
-        }
-    });
-});
-
-// ==========================================
-// ETAPA B: LIMITADOR BRICKWALL & TRUE PEAK CEILING
-// ==========================================
-function applyTruePeakLimiter(buffer, ceilingdB) {
-    // 1. Convertir dBTP a amplitud lineal (ej: -1.0 dB -> ~0.891)
-    const ceilingLinear = Math.pow(10, ceilingdB / 20);
-    const numChannels = buffer.numberOfChannels;
-    const length = buffer.length;
-
-    // 2. Escanear todos los canales para encontrar el pico máximo absoluto
-    let maxPeak = 0;
-    for (let channel = 0; channel < numChannels; channel++) {
-        const data = buffer.getChannelData(channel);
-        for (let i = 0; i < length; i++) {
-            const absSample = Math.abs(data[i]);
-            if (absSample > maxPeak) {
-                maxPeak = absSample;
+            if (maxPeak > ceilingLinear) {
+                const scaleFactor = ceilingLinear / maxPeak;
+                for (let channel = 0; channel < numChannels; channel++) {
+                    const data = buffer.getChannelData(channel);
+                    for (let i = 0; i < length; i++) {
+                        data[i] = data[i] * scaleFactor;
+                    }
+                }
             }
         }
-    }
 
-    // 3. Si el pico máximo supera el techo configurado, ajustar ganancia
-    if (maxPeak > ceilingLinear) {
-        const scaleFactor = ceilingLinear / maxPeak;
-        
-        for (let channel = 0; channel < numChannels; channel++) {
-            const data = buffer.getChannelData(channel);
-            for (let i = 0; i < length; i++) {
-                data[i] = data[i] * scaleFactor;
+        function makeDistortionCurve(amount) {
+            let k = typeof amount === 'number' ? amount : 50;
+            let n_samples = 44100;
+            let curve = new Float32Array(n_samples);
+            let deg = Math.PI / 180;
+            for (let i = 0; i < n_samples; ++i) {
+                let x = i * 2 / n_samples - 1;
+                curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+            }
+            return curve;
+        }
+
+        // 3. UI CONTROLS & PRESETS
+        function setControlValue(id, value) {
+            const slider = document.getElementById(`sl-${id}`);
+            const textDisplay = document.getElementById(`val-${id}`);
+            if (slider && textDisplay) {
+                slider.value = value;
+                let displayVal = value;
+                if (['lufs', 'truePeak', 'trim'].includes(id)) {
+                    displayVal = parseFloat(value).toFixed(1);
+                    if (id === 'trim' && value > 0) displayVal = '+' + displayVal;
+                }
+                textDisplay.innerText = displayVal + slider.getAttribute('data-suffix');
             }
         }
-    }
-}
-</script>
 
+        document.getElementById('preset-selector').addEventListener('change', (e) => {
+            const p = presets[e.target.value];
+            if (!p) return;
+            Object.keys(p).forEach(key => {
+                if (key === 'monoBass') updateMonoBassUI(p[key]);
+                else setControlValue(key, p[key]);
+            });
+            invalidateMaster();
+        });
+
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const id = e.target.id.replace('sl-', '');
+                setControlValue(id, e.target.value);
+                invalidateMaster();
+            });
+        });
+
+        let isMonoBassActive = false;
+        function updateMonoBassUI(isActive) {
+            isMonoBassActive = isActive;
+            const icon = document.getElementById('icon-mono-bass');
+            icon.innerText = isActive ? '[ x ]' : '[   ]';
+            icon.style.color = isActive ? 'var(--neon-cyan)' : 'var(--text-muted)';
+        }
+        document.getElementById('btn-mono-bass').addEventListener('click', () => {
+            updateMonoBassUI(!isMonoBassActive);
+            invalidateMaster();
+        });
+
+        function invalidateMaster() {
+            if (originalBuffer && masteredBuffer) {
+                masteredBuffer = null;
+                trackStatus.innerText = "Ajustes modificados. Requiere procesar.";
+                trackStatus.style.color = "var(--neon-magenta)";
+            }
+        }
+
+        // 4. CARGA DE ARCHIVOS
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'audio/*';
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--neon-magenta)'; });
+        dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--text-muted)'; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--text-muted)';
+            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+        });
+
+        fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+
+        async function processFile(file) {
+            const ctx = getAudioContext();
+            stopPlayback();
+            
+            trackStatus.innerText = "Decodificando...";
+            trackStatus.style.color = 'var(--neon-magenta)';
+            btnProcessMaster.disabled = true;
+            
+            originalBuffer = null;
+            masteredBuffer = null;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                originalBuffer = await ctx.decodeAudioData(arrayBuffer);
+                
+                trackStatus.innerText = file.name;
+                trackStatus.style.color = 'var(--neon-cyan)';
+                btnProcessMaster.disabled = false;
+            } catch (err) {
+                console.error(err);
+                trackStatus.innerText = "Error al decodificar audio.";
+                trackStatus.style.color = 'red';
+            }
+        }
+
+        // 5. PROCESAMIENTO OFFLINE
+        btnProcessMaster.addEventListener('click', async () => {
+            if (!originalBuffer || isProcessing) return;
+            
+            isProcessing = true;
+            btnProcessMaster.disabled = true;
+            progressContainer.style.display = 'block';
+            processStatus.style.display = 'block';
+            progressBar.style.width = '0%';
+            
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += (100 - progress) * 0.12;
+                progressBar.style.width = `${progress}%`;
+                processStatus.innerText = `Aplicando preset... ${Math.round(progress)}%`;
+            }, 60);
+
+            const offlineCtx = new OfflineAudioContext(
+                originalBuffer.numberOfChannels, 
+                originalBuffer.length, 
+                originalBuffer.sampleRate
+            );
+
+            const offlineSource = offlineCtx.createBufferSource();
+            offlineSource.buffer = originalBuffer;
+
+            const offLowClean = offlineCtx.createBiquadFilter();
+            const offWarmth = offlineCtx.createWaveShaper();
+            const offClarity = offlineCtx.createBiquadFilter();
+            const offAir = offlineCtx.createBiquadFilter();
+            const offGlue = offlineCtx.createDynamicsCompressor();
+            const offOutTrim = offlineCtx.createGain();
+
+            const val = (id) => parseFloat(document.getElementById(`sl-${id}`).value);
+
+            offLowClean.type = 'highpass';
+            offLowClean.frequency.value = 20 + (val('lowClean') * 1.5);
+
+            const warmthVal = val('warmth');
+            offWarmth.curve = warmthVal > 0 ? makeDistortionCurve(warmthVal * 4) : null;
+
+            offClarity.type = 'peaking';
+            offClarity.frequency.value = 3500;
+            offClarity.Q.value = 1.5;
+            offClarity.gain.value = -(val('clarity') / 15);
+
+            offAir.type = 'highshelf';
+            offAir.frequency.value = 10000;
+            offAir.gain.value = val('air') / 10;
+
+            offGlue.threshold.value = -10;
+            offGlue.knee.value = 10;
+            offGlue.attack.value = 0.01;
+            offGlue.release.value = 0.1;
+            offGlue.ratio.value = 1 + (val('glue') / 20);
+
+            offOutTrim.gain.value = Math.pow(10, val('trim') / 20);
+
+            // Conexión
+            offlineSource.connect(offLowClean);
+            offLowClean.connect(offWarmth);
+            offWarmth.connect(offClarity);
+            offClarity.connect(offAir);
+            offAir.connect(offGlue);
+            offGlue.connect(offOutTrim);
+            offOutTrim.connect(offlineCtx.destination);
+
+            offlineSource.start(0);
+
+            try {
+                const renderedBuffer = await offlineCtx.startRendering();
+
+                // Aplicar Limitador True Peak
+                const truePeakVal = parseFloat(document.getElementById('sl-truePeak').value);
+                applyTruePeakLimiter(renderedBuffer, truePeakVal);
+
+                clearInterval(progressInterval);
+                masteredBuffer = renderedBuffer;
+                
+                progressBar.style.width = '100%';
+                processStatus.innerText = "¡Master completado!";
+                processStatus.style.color = "var(--neon-cyan)";
+                
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    processStatus.style.display = 'none';
+                    btnProcessMaster.disabled = false;
+                    isProcessing = false;
+                }, 1500);
+
+            } catch (err) {
+                console.error(err);
+                clearInterval(progressInterval);
+                processStatus.innerText = "Error en procesamiento";
+                processStatus.style.color = "red";
+                btnProcessMaster.disabled = false;
+                isProcessing = false;
+            }
+        });
+
+        // 6. REPRODUCCIÓN (A/B MONITOR)
+        function playBuffer(mode) {
+            if (!originalBuffer) return alert("Carga una pista de audio primero.");
+            if (mode === 'mastered' && !masteredBuffer) {
+                return alert("Debes hacer clic en 'Procesar Master' primero.");
+            }
+
+            const ctx = getAudioContext();
+            stopPlayback();
+
+            sourceNode = ctx.createBufferSource();
+            sourceNode.buffer = (mode === 'original') ? originalBuffer : masteredBuffer;
+            sourceNode.connect(ctx.destination);
+
+            sourceNode.start(0);
+            isPlaying = true;
+            currentMode = mode;
+
+            btnPlayOrig.innerText = mode === 'original' ? 'Stop' : 'Play';
+            btnPlayMast.innerText = mode === 'mastered' ? 'Stop' : 'Play';
+
+            sourceNode.onended = () => {
+                isPlaying = false;
+                btnPlayOrig.innerText = 'Play';
+                btnPlayMast.innerText = 'Play';
+            };
+        }
+
+        function stopPlayback() {
+            if (sourceNode && isPlaying) {
+                sourceNode.stop();
+                sourceNode.disconnect();
+                sourceNode = null;
+                isPlaying = false;
+                btnPlayOrig.innerText = 'Play';
+                btnPlayMast.innerText = 'Play';
+            }
+        }
+
+        btnPlayOrig.addEventListener('click', () => isPlaying && currentMode === 'original' ? stopPlayback() : playBuffer('original'));
+        btnPlayMast.addEventListener('click', () => isPlaying && currentMode === 'mastered' ? stopPlayback() : playBuffer('mastered'));
+
+        // Carga inicial
+        document.getElementById('preset-selector').dispatchEvent(new Event('change'));
+    </script>
 </body>
 </html>
